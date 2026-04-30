@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
+const User = require("../models/User");
 
-exports.protect = (req, res, next) => {
+exports.protect = async (req, res, next) => {
   let token;
   if (
     req.headers.authorization &&
@@ -10,18 +11,28 @@ exports.protect = (req, res, next) => {
   }
 
   if (!token) {
-    // Memudahkan testing, assign random/mock user id untuk sekarang
-    req.user = { id: "64f0b2f3e4b00c3b40d4f123", role: "user" };
-    return next();
-    // UNCOMMENT KODE DI BAWAH JIKA JWT SUDAH DIIMPLEMENTASIKAN PENUH SAAT LOGIN
-    // return res.status(401).json({ message: 'Not authorized, no token' });
+    return res
+      .status(401)
+      .json({
+        status: "fail",
+        message: "Akses ditolak. Token tidak ditemukan.",
+      });
   }
 
   try {
-    const decoded = jwt.verify(token, process.env.JWT_SECRET || "secret123");
-    req.user = decoded;
+    const decoded = jwt.verify(
+      token,
+      process.env.JWT_SECRET || "trashid_super_secret_key",
+    );
+    req.user = await User.findById(decoded.id).select("-password");
+
+    if (!req.user) {
+      return res
+        .status(401)
+        .json({ status: "fail", message: "User tidak temukan." });
+    }
     next();
   } catch (error) {
-    res.status(401).json({ message: "Not authorized, token failed" });
+    res.status(401).json({ status: "fail", message: "Token tidak valid" });
   }
 };

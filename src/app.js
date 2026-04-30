@@ -9,6 +9,7 @@ app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
 // Routes
+app.use('/api/auth', require('./routes/authRoutes'));
 app.use("/api/scan", require("./routes/wasteRoutes"));
 app.use("/api/report", require("./routes/reportRoutes"));
 app.use("/api/admin", require("./routes/adminRoutes"));
