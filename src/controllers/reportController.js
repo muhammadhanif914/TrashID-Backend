@@ -1,44 +1,54 @@
-const reportService = require("../services/reportService");
+const Report = require('../models/Report');
+const User = require('../models/User');
 
 exports.createReport = async (req, res) => {
   try {
-    const userId = req.user.id;
-    const { deskripsi, latitude, longitude } = req.body;
-    const fotoPath = req.file ? req.file.path : "dummy/path/report.jpg";
+    if (!req.file) return res.status(400).json({ message: 'Image is required' });
+    
+    // Parse coordinates properly
+    const lat = req.body['location.lat'] || req.body.lat;
+    const lng = req.body['location.lng'] || req.body.lng;
+    const { description, status } = req.body;
 
-    if (!req.file || !deskripsi || !latitude || !longitude) {
-      return res
-        .status(400)
-        .json({ message: "Lengkapi deskripsi, foto, dan koordinat lokasi." });
-    }
-
-    const reportData = {
-      user_id: userId,
-      deskripsi,
-      foto: fotoPath,
-      latitude: parseFloat(latitude),
-      longitude: parseFloat(longitude),
-    };
-
-    const newReport = await reportService.createReport(reportData);
-
-    res.status(201).json({
-      status: "success",
-      message: "Laporan berhasil dibuat dengan status pending",
-      data: newReport,
+    const report = await Report.create({
+      userId: req.user._id,
+      image: req.file.path,
+      location: { lat: Number(lat), lng: Number(lng) },
+      description,
+      status: status || 'normal'
     });
+
+    // Gamifikasi: Tambah XP ketika user submit laporan (10 XP)
+    await User.findByIdAndUpdate(req.user._id, { $inc: { xp: 10 } });
+
+    res.status(201).json(report);
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ message: error.message });
   }
 };
 
 exports.getReports = async (req, res) => {
   try {
-    const reports = await reportService.getAllReports();
-    // Jika untuk user biasa, mungkin ada filtering berdasarkan user_id (req.user.id)
-    // Tapi untuk mock, kita return semua
-    res.status(200).json({ status: "success", data: reports });
+    const reports = await Report.find({}).populate('userId', 'name email xp');
+    res.json(reports);
   } catch (error) {
-    res.status(500).json({ status: "error", message: error.message });
+    res.status(500).json({ message: error.message });
+  }
+};
+
+exports.verifyReport = async (req, res) => {
+  try {
+    const report = await Report.findById(req.params.id);
+    if (!report) return res.status(404).json({ message: 'Report not found' });
+
+    report.verified = true;
+    await report.save();
+
+    // Gamifikasi: Tambah XP ketika laporan diverifikasi admin (20 XP)
+    await User.findByIdAndUpdate(report.userId, { $inc: { xp: 20 } });
+
+    res.json(report);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 };

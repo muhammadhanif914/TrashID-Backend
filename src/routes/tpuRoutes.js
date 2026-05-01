@@ -1,11 +1,10 @@
-const express = require("express");
+const express = require('express');
 const router = express.Router();
-const tpuController = require("../controllers/tpuController");
-const { protect } = require("../middlewares/authMiddleware");
-const { adminOnly } = require("../middlewares/roleMiddleware");
+const { getTPUs, createTPU, updateTPU } = require('../controllers/tpuController');
+const { protect, adminOnly } = require('../middlewares/authMiddleware');
 
-router.get("/", tpuController.getTPU);
-// Update status TPU hanya boleh oleh admin
-router.patch("/:id", protect, adminOnly, tpuController.updateTPU);
+router.get('/', getTPUs);
+router.post('/', protect, adminOnly, createTPU);
+router.patch('/:id', protect, adminOnly, updateTPU);
 
 module.exports = router;

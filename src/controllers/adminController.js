@@ -1,4 +1,13 @@
+const User = require("../models/Users");
+const TPUReport = require("../models/TPUReport");
+const TPULocation = require("../models/TPULocation");
 const reportService = require("../services/reportService");
+
+// exports.getAllUsers = async (req, res) => {
+//   try {
+//     const users = await Use
+//   }
+// }
 
 exports.getAllReports = async (req, res) => {
   try {
