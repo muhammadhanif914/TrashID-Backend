@@ -14,9 +14,11 @@ app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 // Routes
 app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
+app.use('/api/scan', require('./routes/wasteRoutes'));
 app.use('/api/classify', require('./routes/classificationRoutes'));
-app.use('/api/tpu', require('./routes/tpuRoutes'));
 app.use('/api/report', require('./routes/reportRoutes'));
+app.use('/api/admin', require('./routes/adminRoutes'));
+app.use('/api/tpu', require('./routes/tpuRoutes'));
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'API is working properly' });

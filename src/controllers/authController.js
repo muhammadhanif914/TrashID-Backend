@@ -1,54 +1,71 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
-
-const generateToken = (id) => {
-  return jwt.sign({ id }, process.env.JWT_SECRET || 'secret123', { expiresIn: '30d' });
-};
+const authService = require("../services/authService");
 
 exports.register = async (req, res) => {
   try {
-    const { name, username, email, password, role } = req.body;
-    
-    // Cek apakah email atau username sudah pernah dipakai
-    const userExists = await User.findOne({ $or: [{ email }, { username }] });
-    if (userExists) return res.status(400).json({ message: 'Email atau Username sudah digunakan' });
+    const { fullName, username, email, password } = req.body;
 
-    const user = await User.create({ name, username, email, password, role });
-    res.status(201).json({
-      _id: user._id, name: user.name, username: user.username, email: user.email, role: user.role, xp: user.xp,
-      token: generateToken(user._id)
+    // Basic Validation
+    if (!fullName || !username || !email || !password) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Semua kolom wajib diisi" });
+    }
+    if (password.length < 6) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Password minimal 6 karakter" });
+    }
+
+    const result = await authService.registerUser({
+      fullName,
+      username,
+      email,
+      password,
+    });
+    res.status(201).json({ status: "success", data: result });
+  } catch (error) {
+    res.status(400).json({ status: "error", message: error.message });
+  }
+};
+
+exports.verifyOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Email dan OTP wajib diisi" });
+    }
+
+    const result = await authService.verifyOtp(email, String(otp));
+    res.status(200).json({
+      status: "success",
+      message: "Verifikasi berhasil, akun telah aktif",
+      data: result,
     });
   } catch (error) {
-    // Tangkap error jika ada field wajib yang belum terisi
-    res.status(500).json({ message: error.message });
+    res.status(400).json({ status: "error", message: error.message });
+  }
+};
   }
 };
 
 exports.login = async (req, res) => {
   try {
-    // Login menggunakan variabel identitas (boleh pakai email atau username)
-    // Sesuai desain UI: "Username atau Email"
-    const identifier = req.body.identifier || req.body.email || req.body.username;
-    const { password } = req.body;
-
-    if (!identifier || !password) {
-      return res.status(400).json({ message: 'Harap masukkan Username/Email dan Password' });
+    const { email, password, rememberMe } = req.body;
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Email dan password wajib diisi" });
     }
 
-    // Cari user berdasarkan email atau username
-    const user = await User.findOne({
-      $or: [{ email: identifier }, { username: identifier }]
+    const result = await authService.loginUser(email, password, rememberMe);
+    res.status(200).json({
+      status: "success",
+      message: "Login berhasil",
+      data: result,
     });
-
-    if (user && (await user.comparePassword(password))) {
-      res.json({
-        _id: user._id, name: user.name, username: user.username, email: user.email, role: user.role, xp: user.xp,
-        token: generateToken(user._id)
-      });
-    } else {
-      res.status(401).json({ message: 'Username/Email atau password salah' });
-    }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    res.status(401).json({ status: "error", message: error.message });
   }
 };
