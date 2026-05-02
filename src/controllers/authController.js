@@ -47,8 +47,6 @@ exports.verifyOtp = async (req, res) => {
     res.status(400).json({ status: "error", message: error.message });
   }
 };
-  }
-};
 
 exports.login = async (req, res) => {
   try {

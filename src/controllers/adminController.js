@@ -1,4 +1,4 @@
-const User = require("../models/Users");
+const User = require("../models/User");
 const TPUReport = require("../models/TPUReport");
 const TPULocation = require("../models/TPULocation");
 const reportService = require("../services/reportService");
