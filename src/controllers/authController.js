@@ -48,6 +48,22 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
+exports.resendOtp = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Email wajib diisi" });
+    }
+
+    const { message } = await authService.resendVerificationOtp(email);
+    res.status(200).json({ status: "success", message });
+  } catch (error) {
+    res.status(400).json({ status: "error", message: error.message });
+  }
+};
+
 exports.login = async (req, res) => {
   try {
     const { email, password, rememberMe } = req.body;
@@ -67,3 +83,41 @@ exports.login = async (req, res) => {
     res.status(401).json({ status: "error", message: error.message });
   }
 };
+
+exports.forgotPassword = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Email wajib diisi" });
+    }
+
+    const { message } = await authService.forgotPassword(email);
+    res.status(200).json({ status: "success", message });
+  } catch (error) {
+    res.status(404).json({ status: "error", message: error.message });
+  }
+};
+
+exports.resetPassword = async (req, res) => {
+  try {
+    const { email, otp, newPassword } = req.body;
+    if (!email || !otp || !newPassword) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Email, OTP, dan password baru wajib diisi" });
+    }
+    if (newPassword.length < 6) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Password baru minimal 6 karakter" });
+    }
+
+    const { message } = await authService.resetPassword(email, String(otp), newPassword);
+    res.status(200).json({ status: "success", message });
+  } catch (error) {
+    res.status(400).json({ status: "error", message: error.message });
+  }
+};
+
