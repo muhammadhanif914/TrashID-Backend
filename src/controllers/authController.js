@@ -100,6 +100,22 @@ exports.forgotPassword = async (req, res) => {
   }
 };
 
+exports.verifyResetOtp = async (req, res) => {
+  try {
+    const { email, otp } = req.body;
+    if (!email || !otp) {
+      return res
+        .status(400)
+        .json({ status: "fail", message: "Email dan OTP wajib diisi" });
+    }
+
+    const result = await authService.verifyResetOtp(email, String(otp));
+    res.status(200).json({ status: "success", message: result.message });
+  } catch (error) {
+    res.status(400).json({ status: "error", message: error.message });
+  }
+};
+
 exports.resetPassword = async (req, res) => {
   try {
     const { email, otp, newPassword } = req.body;

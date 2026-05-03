@@ -13,6 +13,9 @@ const transporter = nodemailer.createTransport({
     user: process.env.EMAIL_USER, // Email Anda, isi di .env
     pass: process.env.EMAIL_PASS, // App Password Anda, isi di .env
   },
+  tls: {
+    rejectUnauthorized: false,
+  },
 });
 
 // Fungsi bantuan untuk kirim email
@@ -43,36 +46,50 @@ exports.registerUser = async (data) => {
     throw new Error("Email atau Username sudah terdaftar");
   }
 
-  // 2. Generate OTP
-  const otp = generateOTP();
-  const hashedOtp = await bcrypt.hash(otp, 10);
-  const otpExpires = new Date(Date.now() + 5 * 60000); // Aktif 5 Menit
-
-  // 3. Create User dengan status isVerified: false
+  // Create User dan set langsung terverifikasi (tanpa OTP)
   const user = await User.create({
     fullName,
     username,
     email,
     password,
-    otpCode: hashedOtp,
-    otpExpiresAt: otpExpires,
+    isVerified: true,
   });
 
-  // 4. Kirim Email OTP menggunakan Nodemailer
-  await sendEmailOTP(
-    email,
-    "TrashID - Kode OTP Registrasi Anda",
-    `<p>Halo <strong>${fullName}</strong>,</p>
-     <p>Terima kasih telah mendaftar di TrashID. Berikut adalah kode OTP pendaftaran Anda:</p>
-     <h2>${otp}</h2>
-     <p>Kode ini hanya berlaku selama 5 menit. Jangan bagikan kode ini kepada siapapun.</p>`,
-  );
+  // Generate token langsung agar pengguna dapat login otomatis jika diinginkan
+  const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+    expiresIn: "1d",
+  });
 
   return {
-    userId: user._id,
-    email: user.email,
-    message: "Registrasi berhasil. Silakan cek email untuk kode OTP.",
+    token,
+    user: {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+    },
+    message: "Registrasi berhasil. Anda sudah bisa login.",
   };
+};
+
+// Verifikasi OTP untuk alur reset password (tidak mengubah status isVerified)
+exports.verifyResetOtp = async (email, otp) => {
+  const user = await User.findOne({ email });
+  if (!user) throw new Error("User tidak ditemukan");
+
+  // Pastikan ada OTP yang dikirim (misal oleh forgotPassword)
+  if (!user.otpCode || !user.otpExpiresAt) {
+    throw new Error("Sesi verifikasi tidak valid. Mohon lakukan permintaan ulang OTP.");
+  }
+
+  if (user.otpExpiresAt < new Date()) {
+    throw new Error("Kode OTP sudah kedaluwarsa. Silakan minta ulang melalui lupa password");
+  }
+
+  const isMatch = await user.compareOtp(otp);
+  if (!isMatch) throw new Error("Kode OTP salah");
+
+  return { message: "Verifikasi OTP berhasil. Silakan lanjutkan untuk mengganti password." };
 };
 
 exports.verifyOtp = async (email, otp) => {
@@ -101,7 +118,9 @@ exports.verifyOtp = async (email, otp) => {
        <p>Kode ini berlaku untuk 5 menit. Segera masukkan kode ini pada halaman verifikasi.</p>`,
     );
 
-    throw new Error("Kode OTP sudah kedaluwarsa. Kami telah otomatis mengirimkan OTP baru ke email Anda.");
+    throw new Error(
+      "Kode OTP sudah kedaluwarsa. Kami telah otomatis mengirimkan OTP baru ke email Anda.",
+    );
   }
 
   // Cocokkan OTP
@@ -229,7 +248,9 @@ exports.resetPassword = async (email, otp, newPassword) => {
 
   // Cek apakah OTP kedaluwarsa
   if (user.otpExpiresAt < new Date()) {
-    throw new Error("Kode OTP sudah kedaluwarsa, silakan minta ulang melalui lupa password");
+    throw new Error(
+      "Kode OTP sudah kedaluwarsa, silakan minta ulang melalui lupa password",
+    );
   }
 
   // Cocokkan OTP
@@ -246,4 +267,3 @@ exports.resetPassword = async (email, otp, newPassword) => {
     message: "Password berhasil diubah. Silakan login dengan password baru.",
   };
 };
-
