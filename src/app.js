@@ -19,6 +19,7 @@ app.use('/api/classify', require('./routes/classificationRoutes'));
 app.use('/api/report', require('./routes/reportRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/tpu', require('./routes/tpuRoutes'));
+app.use('/api/tps', require('./routes/tpsRoutes'));
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'API is working properly' });

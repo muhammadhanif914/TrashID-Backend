@@ -184,12 +184,6 @@ exports.loginUser = async (email, password, rememberMe) => {
   const isMatch = await user.comparePassword(password);
   if (!isMatch) throw new Error("Email atau password salah");
 
-  if (!user.isVerified) {
-    throw new Error(
-      "Akun belum diverifikasi. Silakan masukkan kode OTP Anda terlebih dahulu",
-    );
-  }
-
   // Tentukan lama token berdasarkan "Ingat Saya" (1 bulan vs 1 hari)
   const expiresIn = rememberMe ? "30d" : "1d";
   const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
