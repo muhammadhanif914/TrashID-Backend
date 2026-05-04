@@ -1,9 +1,50 @@
 const TPS = require("../models/TPS");
 const TPSReport = require("../models/TPSReport");
+const User = require("../models/User");
 
 // Mengambil semua data TPS
 exports.getAllTPS = async () => {
-  return await TPS.find({});
+  const tpsList = await TPS.find();
+  return tpsList;
+};
+
+// Menambah TPS Baru
+exports.createTPS = async (data) => {
+  const { nama_tps, deskripsi, lat, lng } = data;
+  return await TPS.create({
+    nama_tps,
+    deskripsi,
+    location: {
+      type: "Point",
+      coordinates: [lng, lat] // MongoDB uses [lng, lat]
+    },
+    status_terkini: "kosong"
+  });
+};
+
+// Mengambil semua laporan
+exports.getAllReports = async () => {
+  return await TPSReport.find()
+    .populate("tps_id", "nama_tps location")
+    .populate("user_id", "fullName username")
+    .sort({ createdAt: -1 });
+};
+
+// Mengambil laporan berdasarkan user
+exports.getUserReports = async (userId) => {
+  return await TPSReport.find({ user_id: userId })
+    .populate("tps_id", "nama_tps")
+    .sort({ createdAt: -1 });
+};
+
+// Update status laporan
+exports.updateReportStatus = async (reportId, status) => {
+  const report = await TPSReport.findById(reportId);
+  if (!report) throw new Error("Laporan tidak ditemukan");
+
+  report.status_laporan = status;
+  await report.save();
+  return report;
 };
 
 // Mengambil TPS terdekat

@@ -16,9 +16,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/scan', require('./routes/wasteRoutes'));
 app.use('/api/classify', require('./routes/classificationRoutes'));
-app.use('/api/report', require('./routes/reportRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
-app.use('/api/tpu', require('./routes/tpuRoutes'));
 app.use('/api/tps', require('./routes/tpsRoutes'));
 
 app.get('/health', (req, res) => {

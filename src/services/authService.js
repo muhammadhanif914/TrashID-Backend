@@ -67,6 +67,7 @@ exports.registerUser = async (data) => {
       username: user.username,
       email: user.email,
       fullName: user.fullName,
+      role: user.role,
     },
     message: "Registrasi berhasil. Anda sudah bisa login.",
   };
@@ -140,7 +141,12 @@ exports.verifyOtp = async (email, otp) => {
 
   return {
     token,
-    user: { id: user._id, username: user.username, email: user.email },
+    user: { 
+      id: user._id, 
+      username: user.username, 
+      email: user.email,
+      role: user.role 
+    },
   };
 };
 
@@ -197,6 +203,7 @@ exports.loginUser = async (email, password, rememberMe) => {
       username: user.username,
       email: user.email,
       fullName: user.fullName,
+      role: user.role,
     },
   };
 };

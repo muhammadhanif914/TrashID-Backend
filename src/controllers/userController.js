@@ -29,7 +29,7 @@ exports.updateProfile = async (req, res) => {
     if (!user) return res.status(404).json({ message: 'User not found' });
 
     // Update kolom jika ada isian baru dari body
-    user.name = req.body.name || user.name;
+    user.fullName = req.body.fullName || user.fullName;
     user.username = req.body.username || user.username;
     user.email = req.body.email || user.email;
     
@@ -39,15 +39,20 @@ exports.updateProfile = async (req, res) => {
       user.password = req.body.password;
     }
 
+    if (req.file) {
+      user.profilePicture = req.file.path;
+    }
+
     const updatedUser = await user.save();
 
     res.json({
       _id: updatedUser._id,
-      name: updatedUser.name,
+      fullName: updatedUser.fullName,
       username: updatedUser.username,
       email: updatedUser.email,
       role: updatedUser.role,
-      xp: updatedUser.xp
+      xp: updatedUser.xp,
+      profilePicture: updatedUser.profilePicture
     });
   } catch (error) {
     // Tangani jika update ke e-mail/username yang sudah terpakai
@@ -58,3 +63,11 @@ exports.updateProfile = async (req, res) => {
   }
 };
 
+exports.getAllUsers = async (req, res) => {
+  try {
+    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    res.status(200).json({ status: "success", data: users });
+  } catch (error) {
+    res.status(500).json({ status: "error", message: error.message });
+  }
+};
