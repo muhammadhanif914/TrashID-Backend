@@ -1,27 +1,18 @@
 const WasteScan = require("../models/WasteScan");
+const mlService = require("./mlService");
+
+const EDUCATION_MAP = {
+  organik: "Buang ke kompos",
+  anorganik: "Daur ulang",
+  residu: "Buang ke TPA",
+};
 
 exports.processImageScan = async (image, userId) => {
-  // Simulasi ML Model
-  const classifications = ["organik", "anorganik", "residu"];
-  const classification =
-    classifications[Math.floor(Math.random() * classifications.length)];
-  const confidence = Math.floor(Math.random() * 26) + 70; // Random 70 - 95
+  const mlResult = await mlService.predict(image);
+  const classification = (mlResult.prediction || "").toLowerCase();
+  const confidence = Math.round((mlResult.confidence || 0) * 100);
+  const edukasi = EDUCATION_MAP[classification] || "Kategori tidak dikenal";
 
-  // Tentukan edukasi
-  let edukasi = "";
-  switch (classification) {
-    case "organik":
-      edukasi = "Buang ke kompos";
-      break;
-    case "anorganik":
-      edukasi = "Daur ulang";
-      break;
-    case "residu":
-      edukasi = "Buang ke TPA";
-      break;
-  }
-
-  // Simpan riwayat scan
   const newScan = await WasteScan.create({
     user_id: userId,
     image: image,

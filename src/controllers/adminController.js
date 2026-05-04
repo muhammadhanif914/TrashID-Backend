@@ -1,6 +1,6 @@
 const User = require("../models/User");
-const TPUReport = require("../models/TPUReport");
-const TPULocation = require("../models/TPULocation");
+const Report = require("../models/Report");
+const TPSLocation = require("../models/TPS");
 const reportService = require("../services/reportService");
 
 // exports.getAllUsers = async (req, res) => {

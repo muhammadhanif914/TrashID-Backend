@@ -4,8 +4,12 @@ node_modules/
 uploads/
 venv/
 .venv/
+venv_short/
 ml/data/
 ml/models/
+ml/python-service/venv_short/
 __pycache__/
 *.log
+*.h5
+*.keras
 
