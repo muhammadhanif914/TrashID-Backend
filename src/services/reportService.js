@@ -1,33 +1,33 @@
-const TPUReport = require("../models/TPUReport");
-const TPULocation = require("../models/TPULocation");
+const TPSReport = require("../models/TPSReport");
+const TPS = require("../models/TPS");
 
 exports.createReport = async (data) => {
-  const newReport = await TPUReport.create(data);
+  const newReport = await TPSReport.create(data);
   return newReport;
 };
 
 exports.getAllReports = async () => {
-  return await TPUReport.find()
-    .populate("user_id", "name email")
-    .sort({ created_at: -1 });
+  return await TPSReport.find()
+    .populate("user_id", "fullName email")
+    .sort({ createdAt: -1 });
 };
 
 exports.verifyReport = async (reportId) => {
-  const report = await TPUReport.findByIdAndUpdate(
+  const report = await TPSReport.findByIdAndUpdate(
     reportId,
-    { status: "verified" },
+    { status_laporan: "verified" },
     { new: true },
   );
   if (report) {
-    // Opsional: Otomatis update status TPULocation kalau diimplementasikan logic radiusnya
+    // Opsional: Otomatis update status TPS kalau diimplementasikan logic radiusnya
   }
   return report;
 };
 
 exports.rejectReport = async (reportId) => {
-  return await TPUReport.findByIdAndUpdate(
+  return await TPSReport.findByIdAndUpdate(
     reportId,
-    { status: "rejected" },
+    { status_laporan: "rejected" },
     { new: true },
   );
 };
