@@ -43,17 +43,17 @@ exports.submitReport = async (data) => {
   const tps = await TPS.findById(tps_id);
   if (!tps) throw new Error("TPS tidak ditemukan");
 
-  // 2. Geofencing: Cek jarak antara user dan TPS
-  // tps.location.coordinates = [lng, lat]
+  // 2. Geofencing: Dinonaktifkan sesuai permintaan (agar bisa melapor dari mana saja)
+  /*
   const distanceKm = getDistanceFromLatLonInKm(
     lat, lng,
     tps.location.coordinates[1], tps.location.coordinates[0]
   );
   
-  // Jika jarak lebih dari 100 meter (0.1 km), tolak
   if (distanceKm > 0.1) {
     throw new Error("Anda terlalu jauh dari lokasi TPS untuk mengirim laporan.");
   }
+  */
 
   // 3. Cooldown check: Apakah user ini sudah melapor di TPS ini dalam 6 jam terakhir?
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
