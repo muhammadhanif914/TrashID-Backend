@@ -4,3 +4,8 @@ node_modules/
 uploads/
 venv/
 .venv/
+ml/data/
+ml/models/
+__pycache__/
+*.log
+
