@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 import tempfile
 from werkzeug.utils import secure_filename
+import traceback
 
 load_dotenv()
 
@@ -12,7 +13,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Configuration
-MODEL_PATH = os.getenv('MODEL_PATH', '../../model_trashid.keras')
+MODEL_PATH = os.getenv('MODEL_PATH', '../models/model_trashid.keras')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'jfif'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
@@ -79,12 +80,27 @@ def predict():
     try:
         with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
             file.save(tmp.name)
-            result = classifier.predict(tmp.name)
-            os.unlink(tmp.name)
+            temp_path = tmp.name
+        
+        result = classifier.predict(temp_path)
+        
+        # Hapus file dengan error handling untuk Windows
+        try:
+            os.unlink(temp_path)
+        except PermissionError:
+            # Windows sometimes locks file, try again after a short delay
+            import time
+            time.sleep(0.1)
+            try:
+                os.unlink(temp_path)
+            except:
+                pass  # If it still fails, leave it for cleanup
         
         return jsonify(result), 200 if result['success'] else 400
     
     except Exception as e:
+        print(f"ERROR in /predict: {str(e)}")
+        traceback.print_exc()
         return jsonify({
             'success': False,
             'error': str(e)

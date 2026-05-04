@@ -65,68 +65,102 @@ class TrashClassifier:
             return False
     
     def load_model(self, model_path):
-        """Load keras model with compatibility workaround"""
         if not os.path.exists(model_path):
-            # Try alternative format
-            if model_path.endswith('.h5'):
-                keras_path = model_path.replace('.h5', '.keras')
-                if os.path.exists(keras_path):
-                    print(f"⚠️  H5 file not found, trying .keras instead...")
-                    model_path = keras_path
-                else:
-                    raise FileNotFoundError(f"Model not found: {model_path} or {keras_path}")
-            else:
-                raise FileNotFoundError(f"Model not found at {model_path}")
+            raise FileNotFoundError(f"Model not found: {model_path}")
         
         print(f"Loading model from: {model_path}")
-        
-        # Strategy 1: Direct load dengan environment workaround
         try:
-            os.environ['TF_CPP_MIN_LOG_LEVEL'] = '2'
+            import h5py
+            import json
             
-            # Disable strict shape checking
+            # Peringatan: jika file format h5 dan Keras V3, kita perlu patch arsitekturnya
+            # untuk menghindari error BatchNormalization (renorm, dll)
+            
+            from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
+            
+            # Matikan shape format
             tf.compat.v1.keras.backend.set_image_data_format('channels_last')
             
-            self.model = tf.keras.models.load_model(
-                model_path, 
-                compile=False
-            )
-            print(f"✓ Model loaded with direct method")
-            
-        except Exception as e1:
-            print(f"⚠️  Direct load failed: {type(e1).__name__}")
-            
-            # Strategy 2: Rebuild architecture + load weights
             try:
-                print("Attempting fallback: rebuild architecture + load weights...")
-                rebuilt_model = self.build_model_architecture()
+                register_serializable = tf.keras.saving.register_keras_serializable
+            except AttributeError:
+                register_serializable = tf.keras.utils.register_keras_serializable
                 
-                # Try to load weights
-                try:
-                    rebuilt_model.load_weights(model_path, by_name=True, skip_mismatch=True)
-                    print("✓ Weights loaded into rebuilt model")
-                except:
-                    print("⚠️  Could not load weights directly, model will use random init")
-                
-                self.model = rebuilt_model
-                print(f"✓ Model built and ready")
-                
-            except Exception as e2:
-                print(f"✗ Fallback also failed: {e2}")
-                raise RuntimeError("Cannot load model with any method")
+            @register_serializable(package='Custom', name='preprocess_input')
+            def custom_preprocess(x):
+                return preprocess_input(x)
+
+            # --- WORKAROUND TERBAIK UNTUK KERAS 3 VS KERAS 2 ---
+            # Jika memuat arsitektur Keras V2 di Keras V3 mengalami renorm BatchNormalization error:
+            try:
+                self.model = tf.keras.models.load_model(
+                    model_path, compile=False, custom_objects={'preprocess_input': custom_preprocess}
+                )
+            except TypeError as te:
+                if 'BatchNormalization' in str(te):
+                    print("⚠️  Detected Keras 2 to Keras 3 BatchNormalization incompatibility")
+                    print("⚙️  Rebuilding model architecture manually...")
+                    
+                    # 1. Hentikan percobaan deserialize dan pakai build manual yg aman
+                    self.model = self._build_manual_architecture()
+                    
+                    # 2. Build model dahulu sebelum memuatkan weights
+                    self.model.build((None, 224, 224, 3))
+                    
+                    # 3. Pindahkan bobot (weights)
+                    # Jika '.keras', Keras v3 tidak suka `by_name=True` secara default 
+                    # saat menimpa architecture. Jadi hapus flag tersebut.
+                    self.model.load_weights(model_path, skip_mismatch=True)
+                    print("✓ Recovered from error: Architecture rebuilt and weights copied.")
+                else:
+                    raise te
+                    
+            print("✓ Model loaded successfully")
+
+            # Compile for inference
+            try:
+                self.model.compile(
+                    optimizer='adam',
+                    loss='sparse_categorical_crossentropy',
+                    metrics=['accuracy']
+                )
+            except:
+                pass
+            
+            print(f"✓ Model ready for inference")
+            
+        except Exception as e:
+            print(f"⚠️  Load failed: {e}")
+            raise e
+            
+    def _build_manual_architecture(self):
+        """Build a clean architecture safe for Keras 3"""
+        from tensorflow.keras.applications.mobilenet_v2 import preprocess_input
         
-        # Compile for inference
-        try:
-            self.model.compile(
-                optimizer='adam',
-                loss='sparse_categorical_crossentropy',
-                metrics=['accuracy']
-            )
-        except:
-            pass
+        data_augmentation = tf.keras.Sequential([
+            layers.RandomFlip("horizontal"),
+            layers.RandomRotation(0.15),
+            layers.RandomZoom(0.15),
+            layers.RandomContrast(0.1),
+        ])
         
-        print(f"✓ Model ready for inference")
-    
+        base_model = tf.keras.applications.MobileNetV2(
+            input_shape=(224, 224, 3), include_top=False, weights=None
+        )
+        base_model.trainable = False
+        
+        model = models.Sequential([
+            data_augmentation,
+            layers.Lambda(preprocess_input),
+            base_model,
+            layers.GlobalAveragePooling2D(),
+            layers.BatchNormalization(),
+            layers.Dense(128, activation='relu'),
+            layers.Dropout(0.5),
+            layers.Dense(len(self.class_names), activation='softmax')
+        ])
+        return model
+
     def preprocess_image(self, image_path, img_size=(224, 224)):
         """Preprocess image for prediction"""
         img = Image.open(image_path).convert('RGB')
