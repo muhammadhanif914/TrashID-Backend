@@ -16,6 +16,7 @@ app.use('/api/auth', require('./routes/authRoutes'));
 app.use('/api/users', require('./routes/userRoutes'));
 app.use('/api/scan', require('./routes/wasteRoutes'));
 app.use('/api/classify', require('./routes/classificationRoutes'));
+app.use('/api/trash', require('./routes/trashRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/tps', require('./routes/tpsRoutes'));
 

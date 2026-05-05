@@ -3,9 +3,14 @@ const mlService = require("../services/mlService");
 
 exports.predictTrash = async (req, res) => {
   try {
-    // Simulasi memanggil service ML
-    // Idealnya file gambar diambil dari req.file jika menggunakan multer
-    const predictionResult = await mlService.predict("placeholder_image_data");
+    if (!req.file) {
+      return res.status(400).json({
+        status: "fail",
+        message: "Gambar sampah wajib disertakan.",
+      });
+    }
+
+    const predictionResult = await mlService.predict(req.file.path);
 
     res.status(200).json({
       status: "success",

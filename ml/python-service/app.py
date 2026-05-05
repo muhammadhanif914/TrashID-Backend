@@ -1,11 +1,9 @@
-from flask import Flask, request, jsonify
-from flask_cors import CORS
-from inference import TrashClassifier
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from pathlib import Path
 import os
 from dotenv import load_dotenv
 import tempfile
 from werkzeug.utils import secure_filename
-import traceback
 
 load_dotenv()
 
@@ -13,7 +11,7 @@ app = Flask(__name__)
 CORS(app)
 
 # Configuration
-MODEL_PATH = os.getenv('MODEL_PATH', '../models/model_trashid.keras')
+MODEL_PATH = os.getenv('MODEL_PATH', '../../model_trashid.keras')
 ALLOWED_EXTENSIONS = {'jpg', 'jpeg', 'png', 'gif', 'jfif'}
 MAX_FILE_SIZE = 10 * 1024 * 1024  # 10MB
 
@@ -49,75 +47,102 @@ def predict():
     if 'image' not in request.files:
         return jsonify({
             'success': False,
-            'error': 'No image file provided'
-        }), 400
-    
-    file = request.files['image']
-    
-    if file.filename == '':
-        return jsonify({
-            'success': False,
-            'error': 'No file selected'
-        }), 400
-    
-    if not allowed_file(file.filename):
-        return jsonify({
-            'success': False,
-            'error': f'Invalid file type. Allowed: {", ".join(ALLOWED_EXTENSIONS)}'
-        }), 400
-    
-    # Check file size
-    file.seek(0, os.SEEK_END)
-    file_size = file.tell()
-    if file_size > MAX_FILE_SIZE:
-        return jsonify({
-            'success': False,
-            'error': f'File too large. Max size: {MAX_FILE_SIZE / 1024 / 1024}MB'
-        }), 400
-    file.seek(0)
-    
-    # Save temporarily and predict
-    try:
-        with tempfile.NamedTemporaryFile(delete=False, suffix='.jpg') as tmp:
-            file.save(tmp.name)
-            temp_path = tmp.name
-        
-        result = classifier.predict(temp_path)
-        
-        # Hapus file dengan error handling untuk Windows
-        try:
-            os.unlink(temp_path)
-        except PermissionError:
-            # Windows sometimes locks file, try again after a short delay
-            import time
-            time.sleep(0.1)
-            try:
-                os.unlink(temp_path)
-            except:
-                pass  # If it still fails, leave it for cleanup
-        
-        return jsonify(result), 200 if result['success'] else 400
-    
-    except Exception as e:
-        print(f"ERROR in /predict: {str(e)}")
-        traceback.print_exc()
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+            from fastapi import FastAPI, File, HTTPException, UploadFile
+            from pathlib import Path
+            import os
+            import numpy as np
+            from PIL import Image
+            import tensorflow as tf
+            import io
+            import uvicorn
 
-@app.route('/info', methods=['GET'])
-def info():
-    """Get model info"""
-    return jsonify({
-        'model_path': MODEL_PATH,
-        'model_loaded': classifier is not None,
-        'classes': classifier.class_names if classifier else None,
-        'input_size': (224, 224),
-        'max_file_size_mb': MAX_FILE_SIZE / 1024 / 1024
-    })
+            app = FastAPI()
 
-if __name__ == '__main__':
-    port = int(os.getenv('PYTHON_PORT', 5000))
-    debug = os.getenv('FLASK_ENV', 'production') == 'development'
-    app.run(host='0.0.0.0', port=port, debug=debug)
+            BASE_DIR = Path(__file__).resolve().parent
+            MODEL_CANDIDATES = []
+            model_path_env = os.getenv("MODEL_PATH")
+            if model_path_env:
+                MODEL_CANDIDATES.append(Path(model_path_env))
+            MODEL_CANDIDATES.extend([
+                BASE_DIR / "model_trashid.h5",
+                BASE_DIR / "model_trashid.keras",
+                BASE_DIR.parent / "model_trashid.keras",
+            ])
+
+            model = None
+            model_path = None
+            for candidate in MODEL_CANDIDATES:
+                if candidate and candidate.exists():
+                    model_path = candidate
+                    model = tf.keras.models.load_model(str(candidate))
+                    break
+
+            if model is None:
+                raise RuntimeError("Model file not found. Set MODEL_PATH or place model_trashid.h5/.keras next to app.py")
+
+            classes = ["organik", "anorganik", "b3"]
+
+            def preprocess(image):
+                image = image.resize((224, 224))
+                image = np.array(image) / 255.0
+                image = np.expand_dims(image, axis=0)
+                return image
+
+
+            def format_probabilities(prediction_array):
+                flat = prediction_array[0].tolist()
+                return {classes[i]: float(flat[i]) for i in range(len(classes))}
+
+
+            @app.get("/")
+            def home():
+                return {"status": "ok", "message": "ML API running", "model_loaded": True}
+
+
+            @app.get("/health")
+            def health():
+                return {"status": "ok", "model_loaded": True}
+
+            @app.get("/info")
+            def info():
+                return {
+                    "status": "ok",
+                    "model_loaded": True,
+                    "model_path": str(model_path),
+                    "classes": classes,
+                }
+
+
+            @app.post("/predict")
+            async def predict(image: UploadFile = File(None), file: UploadFile = File(None)):
+                try:
+                    upload = image or file
+                    if upload is None:
+                        raise HTTPException(status_code=400, detail="image file is required")
+
+                    contents = await upload.read()
+                    image = Image.open(io.BytesIO(contents)).convert("RGB")
+
+                    img = preprocess(image)
+                    prediction = model.predict(img)
+
+                    idx = int(np.argmax(prediction))
+                    confidence = float(np.max(prediction))
+                    predicted_class = classes[idx]
+
+                    return {
+                        "success": True,
+                        "prediction": predicted_class,
+                        "confidence": confidence,
+                        "probabilities": format_probabilities(prediction),
+                        "scores": prediction.tolist(),
+                        "model_loaded": True,
+                    }
+
+                except Exception as e:
+                    raise HTTPException(status_code=500, detail=str(e))
+
+
+            if __name__ == "__main__":
+                port = int(os.getenv("PYTHON_PORT", "5000"))
+                uvicorn.run(app, host="0.0.0.0", port=port)
