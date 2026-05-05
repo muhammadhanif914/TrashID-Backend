@@ -12,11 +12,9 @@ const ML_TIMEOUT = 30000; // 30 seconds
 
 // Deskripsi untuk setiap kategori sampah
 const CLASS_DESCRIPTIONS = {
-  Anorganik:
-    "Sampah anorganik seperti plastik, logam, kaca yang dapat didaur ulang.",
-  Organik:
-    "Sampah organik seperti sisa makanan, daun, kulit buah yang bisa dijadikan kompos.",
-  Residu: "Sampah residu yang sulit didaur ulang dan perlu penanganan khusus.",
+  'Anorganik': 'Sampah anorganik seperti plastik, logam, kaca yang dapat didaur ulang.',
+  'Organik': 'Sampah organik seperti sisa makanan, daun, kulit buah yang bisa dijadikan kompos.',
+  'Residu': 'Sampah residu yang sulit didaur ulang dan perlu penanganan khusus.'
 };
 
 /**
@@ -49,20 +47,23 @@ exports.predict = async (imagePath) => {
       timeout: ML_TIMEOUT,
     });
 
-    if (!response.data.success) {
-      throw new Error(response.data.error || "Prediction failed");
+    const payload = response.data;
+
+    if (!payload.success) {
+      throw new Error(payload.error || 'Prediction failed');
     }
 
-    // Transform response untuk format yang diharapkan oleh controller
+    // Mengambil label prediksi (Contoh: "Organik")
+    const predictionLabel = payload.prediction;
+
     return {
       success: true,
-      prediction: response.data.prediction,
-      label: response.data.prediction, // Alias untuk compatibility
-      confidence: response.data.confidence,
-      probabilities: response.data.probabilities,
-      description:
-        CLASS_DESCRIPTIONS[response.data.prediction] || "Unknown waste type",
-      timestamp: new Date(),
+      prediction: predictionLabel,
+      label: predictionLabel, // Alias untuk compatibility
+      confidence: payload.confidence,
+      probabilities: payload.probabilities || payload.scores || null,
+      description: CLASS_DESCRIPTIONS[predictionLabel] || 'Unknown waste type',
+      timestamp: new Date()
     };
   } catch (error) {
     console.error("ML Service Error:", error.message);
@@ -79,7 +80,7 @@ exports.checkHealth = async () => {
     const response = await axios.get(`${ML_SERVICE_URL}/health`, {
       timeout: 5000,
     });
-    return response.data.model_loaded === true;
+    return response.data.model_loaded === true || response.data.status === 'ok';
   } catch (error) {
     console.error("ML Service Health Check Failed:", error.message);
     return false;
