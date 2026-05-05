@@ -38,7 +38,7 @@ const generateOTP = () =>
   Math.floor(100000 + Math.random() * 900000).toString();
 
 exports.registerUser = async (data) => {
-  const { fullName, username, email, password } = data;
+  const { fullName, username, email, password, phone, address } = data;
 
   // 1. Cek apakah user sudah ada
   const userExists = await User.findOne({ $or: [{ email }, { username }] });
@@ -52,6 +52,8 @@ exports.registerUser = async (data) => {
     username,
     email,
     password,
+    phone,
+    address,
     isVerified: true,
   });
 
@@ -80,17 +82,24 @@ exports.verifyResetOtp = async (email, otp) => {
 
   // Pastikan ada OTP yang dikirim (misal oleh forgotPassword)
   if (!user.otpCode || !user.otpExpiresAt) {
-    throw new Error("Sesi verifikasi tidak valid. Mohon lakukan permintaan ulang OTP.");
+    throw new Error(
+      "Sesi verifikasi tidak valid. Mohon lakukan permintaan ulang OTP.",
+    );
   }
 
   if (user.otpExpiresAt < new Date()) {
-    throw new Error("Kode OTP sudah kedaluwarsa. Silakan minta ulang melalui lupa password");
+    throw new Error(
+      "Kode OTP sudah kedaluwarsa. Silakan minta ulang melalui lupa password",
+    );
   }
 
   const isMatch = await user.compareOtp(otp);
   if (!isMatch) throw new Error("Kode OTP salah");
 
-  return { message: "Verifikasi OTP berhasil. Silakan lanjutkan untuk mengganti password." };
+  return {
+    message:
+      "Verifikasi OTP berhasil. Silakan lanjutkan untuk mengganti password.",
+  };
 };
 
 exports.verifyOtp = async (email, otp) => {
@@ -141,11 +150,11 @@ exports.verifyOtp = async (email, otp) => {
 
   return {
     token,
-    user: { 
-      id: user._id, 
-      username: user.username, 
+    user: {
+      id: user._id,
+      username: user.username,
       email: user.email,
-      role: user.role 
+      role: user.role,
     },
   };
 };

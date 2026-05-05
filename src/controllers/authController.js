@@ -2,10 +2,10 @@ const authService = require("../services/authService");
 
 exports.register = async (req, res) => {
   try {
-    const { fullName, username, email, password } = req.body;
+    const { fullName, username, email, password, phone, address } = req.body;
 
     // Basic Validation
-    if (!fullName || !username || !email || !password) {
+    if (!fullName || !username || !email || !password || !phone || !address) {
       return res
         .status(400)
         .json({ status: "fail", message: "Semua kolom wajib diisi" });
@@ -21,6 +21,8 @@ exports.register = async (req, res) => {
       username,
       email,
       password,
+      phone,
+      address,
     });
     res.status(201).json({ status: "success", data: result });
   } catch (error) {
@@ -122,7 +124,10 @@ exports.resetPassword = async (req, res) => {
     if (!email || !otp || !newPassword) {
       return res
         .status(400)
-        .json({ status: "fail", message: "Email, OTP, dan password baru wajib diisi" });
+        .json({
+          status: "fail",
+          message: "Email, OTP, dan password baru wajib diisi",
+        });
     }
     if (newPassword.length < 6) {
       return res
@@ -130,10 +135,13 @@ exports.resetPassword = async (req, res) => {
         .json({ status: "fail", message: "Password baru minimal 6 karakter" });
     }
 
-    const { message } = await authService.resetPassword(email, String(otp), newPassword);
+    const { message } = await authService.resetPassword(
+      email,
+      String(otp),
+      newPassword,
+    );
     res.status(200).json({ status: "success", message });
   } catch (error) {
     res.status(400).json({ status: "error", message: error.message });
   }
 };
-
