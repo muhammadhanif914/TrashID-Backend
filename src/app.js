@@ -2,11 +2,22 @@ const express = require('express');
 const cors = require('cors');
 const path = require('path');
 const connectDB = require('./config/database');
-
-// Connect to Database
-connectDB();
+const mongoose = require('mongoose');
 
 const app = express();
+
+// Middleware untuk memastikan DB terkoneksi
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState === 1) {
+    return next();
+  }
+  try {
+    await connectDB();
+    next();
+  } catch (err) {
+    res.status(500).json({ status: 'error', message: 'Database connection failed' });
+  }
+});
 
 app.use(cors({
   origin: '*',
@@ -15,6 +26,7 @@ app.use(cors({
   credentials: true,
   optionsSuccessStatus: 200
 }));
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
