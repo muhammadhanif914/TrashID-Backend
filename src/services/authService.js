@@ -277,3 +277,53 @@ exports.resetPassword = async (email, otp, newPassword) => {
     message: "Password berhasil diubah. Silakan login dengan password baru.",
   };
 };
+
+exports.googleLogin = async (googleData) => {
+  const { email, fullName, googleId, profilePicture } = googleData;
+
+  let user = await User.findOne({ email });
+
+  if (user) {
+    // Jika user sudah ada tapi belum punya googleId, update saja
+    if (!user.googleId) {
+      user.googleId = googleId;
+      if (profilePicture && !user.profilePicture) {
+        user.profilePicture = profilePicture;
+      }
+      await user.save();
+    }
+  } else {
+    // Buat user baru jika belum ada
+    // Generate username dari email
+    const baseUsername = email.split("@")[0].toLowerCase().replace(/[^a-z0-9]/g, "");
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const username = `${baseUsername}${randomSuffix}`;
+
+    user = await User.create({
+      fullName,
+      username,
+      email,
+      password: bcrypt.hashSync(Math.random().toString(36), 10), // Random secure password
+      googleId,
+      profilePicture,
+      isVerified: true // User dari Google otomatis terverifikasi
+    });
+  }
+
+  // Generate Token
+  const token = jwt.sign({ id: user._id, role: user.role }, JWT_SECRET, {
+    expiresIn: "30d", // Google login biasanya lebih awet
+  });
+
+  return {
+    token,
+    user: {
+      id: user._id,
+      username: user.username,
+      email: user.email,
+      fullName: user.fullName,
+      role: user.role,
+      profilePicture: user.profilePicture
+    },
+  };
+};

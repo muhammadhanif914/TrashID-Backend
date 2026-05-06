@@ -1,4 +1,6 @@
 const authService = require("../services/authService");
+const { OAuth2Client } = require("google-auth-library");
+const client = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 exports.register = async (req, res) => {
   try {
@@ -143,5 +145,46 @@ exports.resetPassword = async (req, res) => {
     res.status(200).json({ status: "success", message });
   } catch (error) {
     res.status(400).json({ status: "error", message: error.message });
+  }
+};
+
+exports.googleLogin = async (req, res) => {
+  try {
+    const { credential, email, fullName, googleId, profilePicture } = req.body;
+    
+    let finalData;
+
+    if (email && fullName && googleId) {
+      // Data profil dikirim langsung dari frontend (setelah verifikasi access_token)
+      finalData = { email, fullName, googleId, profilePicture };
+    } else if (credential) {
+      // Verifikasi Token ke Google API (jika menggunakan ID Token)
+      const ticket = await client.verifyIdToken({
+        idToken: credential,
+        audience: process.env.GOOGLE_CLIENT_ID,
+      });
+
+      const payload = ticket.getPayload();
+      if (!payload) throw new Error("Gagal mengambil data dari Google");
+      
+      finalData = {
+        email: payload.email,
+        fullName: payload.name,
+        googleId: payload.sub,
+        profilePicture: payload.picture
+      };
+    } else {
+      return res.status(400).json({ status: "fail", message: "Data Google tidak lengkap" });
+    }
+
+    const result = await authService.googleLogin(finalData);
+
+    res.status(200).json({
+      status: "success",
+      message: "Login Google berhasil",
+      data: result,
+    });
+  } catch (error) {
+    res.status(401).json({ status: "error", message: "Verifikasi Google Gagal: " + error.message });
   }
 };

@@ -8,6 +8,7 @@ const { adminOnly } = require("../middlewares/roleMiddleware");
 router.use(protect);
 router.use(adminOnly);
 
+router.get("/stats", adminController.getDashboardStats);
 router.get("/reports", adminController.getAllReports);
 router.patch("/report/:id/verify", adminController.verifyReport);
 router.patch("/report/:id/reject", adminController.rejectReport);

@@ -5,6 +5,7 @@ const tpsReportSchema = new mongoose.Schema({
   user_id: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   tingkat_kepenuhan: { type: Number, required: true, min: 1, max: 5 },
   foto_url: { type: String, required: true },
+  deskripsi: { type: String, default: "" },
   // Koordinat asli tempat user mengambil foto (validasi jarak dari TPS)
   user_location: {
     type: { type: String, enum: ["Point"], default: "Point" },

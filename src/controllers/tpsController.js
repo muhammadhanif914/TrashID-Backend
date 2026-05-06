@@ -84,18 +84,17 @@ exports.updateReportStatus = async (req, res) => {
 
 exports.submitReport = async (req, res) => {
   try {
-    const user_id = req.user.id; // Didapat dari authMiddleware
-    const { tps_id, tingkat_kepenuhan, lat, lng } = req.body;
+    const user_id = req.user._id; 
+    const { tps_id, tingkat_kepenuhan, lat, lng, deskripsi } = req.body;
 
     if (!req.file) {
       return res.status(400).json({ status: "fail", message: "Foto wajib disertakan" });
     }
     
     if (!tps_id || !tingkat_kepenuhan || !lat || !lng) {
-      return res.status(400).json({ status: "fail", message: "tps_id, tingkat_kepenuhan, lat, dan lng wajib disertakan" });
+      return res.status(400).json({ status: "fail", message: "Data tidak lengkap (tps_id, tingkat_kepenuhan, lat, lng)" });
     }
 
-    // Menggunakan path dari Cloudinary (URL Lengkap)
     const foto_url = req.file.path;
 
     const report = await tpsService.submitReport({
@@ -104,15 +103,17 @@ exports.submitReport = async (req, res) => {
       tingkat_kepenuhan: parseInt(tingkat_kepenuhan),
       foto_url,
       lat: parseFloat(lat),
-      lng: parseFloat(lng)
+      lng: parseFloat(lng),
+      deskripsi: deskripsi || ""
     });
 
     res.status(201).json({
       status: "success",
-      message: "Laporan berhasil dikirim dan diverifikasi",
+      message: "Laporan berhasil dikirim",
       data: report
     });
   } catch (error) {
+    console.error("SUBMIT_REPORT_ERROR:", error.message);
     res.status(400).json({ status: "error", message: error.message });
   }
 };

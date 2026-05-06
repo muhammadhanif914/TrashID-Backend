@@ -78,7 +78,7 @@ function deg2rad(deg) {
 
 // Menambahkan Laporan dan Agregasi Status
 exports.submitReport = async (data) => {
-  const { tps_id, user_id, tingkat_kepenuhan, foto_url, lat, lng } = data;
+  const { tps_id, user_id, tingkat_kepenuhan, foto_url, lat, lng, deskripsi } = data;
 
   // 1. Cek apakah TPS ada
   const tps = await TPS.findById(tps_id);
@@ -96,7 +96,8 @@ exports.submitReport = async (data) => {
   }
   */
 
-  // 3. Cooldown check: Apakah user ini sudah melapor di TPS ini dalam 6 jam terakhir?
+  // 3. Cooldown check: Dinonaktifkan sementara untuk testing
+  /*
   const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
   const recentReport = await TPSReport.findOne({
     tps_id,
@@ -107,6 +108,7 @@ exports.submitReport = async (data) => {
   if (recentReport) {
     throw new Error("Anda sudah mengirim laporan untuk TPS ini baru-baru ini. Silakan coba lagi nanti.");
   }
+  */
 
   // 4. Simpan laporan
   const report = await TPSReport.create({
@@ -114,8 +116,9 @@ exports.submitReport = async (data) => {
     user_id,
     tingkat_kepenuhan,
     foto_url,
+    deskripsi: deskripsi || "",
     user_location: { type: "Point", coordinates: [lng, lat] },
-    status_laporan: "verified" // Otomatis verified karena lolos geofencing
+    status_laporan: "pending" // Default ke pending agar admin verifikasi
   });
 
   // 5. Agregasi status TPS (Real-time update)

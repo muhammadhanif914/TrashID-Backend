@@ -10,24 +10,36 @@ router.get("/", tpsController.getAllTPS);
 // POST /api/tps (Admin)
 router.post("/", protect, tpsController.createTPS);
 
-// GET /api/tps/nearby?lat=...&lng=...&radius=...
+// GET /api/tps/nearby
 router.get("/nearby", tpsController.getNearbyTPS);
 
-// POST /api/tps/report
+// POST /api/tps/report (Dengan Error Handling Multer)
 router.post(
   "/report",
   protect,
-  uploadCloud.single("foto"),
+  (req, res, next) => {
+    uploadCloud.single("foto")(req, res, (err) => {
+      if (err) {
+        console.error("CLOUDINARY_UPLOAD_ERROR:", err);
+        return res.status(500).json({ 
+          status: "error", 
+          message: "Gagal mengunggah foto. Pastikan koneksi internet stabil dan konfigurasi Cloudinary di .env sudah benar.",
+          detail: err.message 
+        });
+      }
+      next();
+    });
+  },
   tpsController.submitReport
 );
 
-// GET /api/tps/reports (Admin - currently returns all)
+// GET /api/tps/reports
 router.get("/reports", protect, tpsController.getAllReports);
 
 // GET /api/tps/my-reports
 router.get("/my-reports", protect, tpsController.getMyReports);
 
-// PATCH /api/tps/reports/:id/status (Admin)
+// PATCH /api/tps/reports/:id/status
 router.patch("/reports/:id/status", protect, tpsController.updateReportStatus);
 
 module.exports = router;

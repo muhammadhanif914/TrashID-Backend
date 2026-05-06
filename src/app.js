@@ -21,7 +21,7 @@ app.use(async (req, res, next) => {
 
 app.use(cors({
   origin: '*',
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
   optionsSuccessStatus: 200
@@ -41,6 +41,7 @@ app.use('/api/classify', require('./routes/classificationRoutes'));
 app.use('/api/trash', require('./routes/trashRoutes'));
 app.use('/api/admin', require('./routes/adminRoutes'));
 app.use('/api/tps', require('./routes/tpsRoutes'));
+app.use('/api/faqs', require('./routes/faqRoutes'));
 
 app.get('/health', (req, res) => {
   res.status(200).json({ status: 'success', message: 'API is working properly' });

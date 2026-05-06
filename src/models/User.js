@@ -12,6 +12,7 @@ const userSchema = new mongoose.Schema(
     role: { type: String, enum: ["user", "admin"], default: "user" },
     xp: { type: Number, default: 0 },
     profilePicture: { type: String, default: null },
+    googleId: { type: String, default: null },
 
     // State untuk OTP
     isVerified: { type: Boolean, default: false },
